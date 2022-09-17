@@ -1,0 +1,281 @@
+---
+title: "NBA Players Analysis"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+link-citations: yes
+bibliography: bibliography.bib
+date: '2022-06-12'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(tidyverse)
+library(gt)
+library(ggplot2)
+library(ggcorrplot)
+
+
+```
+
+## INTRODUCTION
+
+For NBA fans, player statistics are very important. Since I'm also a fan I want to analyze the data and find out some interesting conclusions. Players, parents, coaches, and fans will often refer to the box score after a game to decipher how well (or how badly) a game was played, or how well player played over season. It is used to gauge players/teams. While analyzing the data, this can bring a lot of insight which can help coaching personnel on a team to deeper understand the game.
+
+
+## Questions answered
+
+#### Here we have multiple questions: 
+* What statistics correlate to each other 
+* Who were best scorers
+* Who had longest career
+* Colleges and their impact on draft
+* Players that dominated major statistical categories
+* Shifts in players physique during different seasons
+* Who had the longest name
+
+
+## The Dataset
+
+The dataset is called all_seasons from kaggle. Here is the citation @cirtautas_2021, and here is the [direct link](https://www.kaggle.com/datasets/justinas/nba-players-data)
+
+
+```{r data, echo=FALSE}
+df<-read.csv("all_seasons.csv")
+df %>% sample_n(10)
+```
+
+The data set contains over two decades of data on each player who has been part of an NBA teams' roster. It captures demographic variables such as age, height, weight and place of birth, biographical details like the team played for, draft year and round. In addition, it has basic box score statistics such as games played, average number of points, rebounds, assists, etc.
+
+
+
+## Data Analysis
+
+
+### Which statistics correlate the most between themselves
+
+```{r cor, echo=FALSE}
+
+df1 <- df[, c("age","player_height","player_weight","gp","net_rating","pts","ast","reb","usg_pct","ts_pct")]
+
+ff<-cor(df1, method = c("spearman"))
+
+ggcorrplot(ff)
+
+```
+
+Here we see strong correlation between weight and height, and in number of assists and points
+
+### 10 most succesful colleges regarding players drafted from them 
+```{r colleges, echo=FALSE}
+
+df  %>% group_by(college) %>% count(college) %>% arrange(desc(n)) %>% head(11) %>% tail(10) 
+
+```
+Kentucky and Duke were obvious choices regarding developing athletic talent
+
+### Top 10 scorers in last 25 years of NBA 
+
+```{r scorers, warning=FALSE}
+
+df %>% group_by(player_name) %>% arrange(desc(pts)) %>% head(6) %>% ggplot(
+       mapping=aes(x=player_name,
+                   y=pts,group=1))+
+ geom_bar(stat = "summary")+
+  coord_cartesian(ylim =c(0,40))+
+  ggtitle("Top 5 scorers last 25 seasons")
+
+
+```
+Here we have best scorers, in which results are not surprising
+
+### Top 10 longest careers in this timespan
+```{r oldnibbas, warning=FALSE}
+
+df  %>% count(player_name) %>% arrange(desc(n)) %>% head(10)  %>% gt()
+```
+List of players with lenghties carriers during these years
+
+### Top 5 true shooters in last 25 years of NBA 
+
+
+```{r tru,warning=FALSE}
+
+
+df %>% filter(gp>40) %>% arrange(desc(ts_pct)) %>% head(5) %>% 
+  ggplot(mapping=aes(x=player_name,
+                   y=ts_pct))+
+  geom_bar(stat = "identity")+
+  ggtitle("Top 5 true shooters in last 30 season")
+
+
+
+
+
+```
+We see here the centers have most ts%, now we want to test correlation between ts% and player height
+
+```{r tru1,warning=FALSE}
+
+df2<- df[,c("ts_pct","player_height")]
+
+cor(df2, method = c("spearman"))
+
+
+```
+Here we see that actualy isn't the case, since 0.1 correlation is too weak to be conclusive
+
+
+### Top 5 leaders in total points, rebounds, assists 
+
+
+```{r statlead,warning=FALSE}
+
+
+df %>% filter(gp>30) %>% mutate(statsum= pts+ast+reb) %>% arrange(desc(statsum)) %>% head(7) %>% ggplot(mapping=aes(x=player_name,
+                   y=statsum,group=1))+
+  geom_bar(stat = "summary")+
+  ggtitle(" Leaders for  total stats(pts+ast+reb)")
+  
+
+
+```
+Here the odd one out is actually Shaquile O'Neal since he never averaged over 3.8 ast per game, so we can see how he was dominating regarding offense and rebounds.
+
+### True shooting percentages over years
+
+
+```{r ts,warning=FALSE}
+
+
+df %>% group_by(season) %>% summarise( mean_pct=mean(ts_pct)) %>% ggplot(aes(x=season,y= mean_pct,group=1)) + geom_point() + geom_line()  + scale_x_discrete(breaks=c("1996-97","2001-02","2006-07","2011-12","2016-17","2020-21")) + theme_light()
+
+
+
+
+```
+Here we see increase in true shooting, I can say that this might be because of modern day spacing is much wider than before and this allows more space to work on offense, which lead to more efficient scoring
+
+### Player heights over years
+
+```{r hei,warning=FALSE}
+
+
+df %>% group_by(season) %>% summarise( ph=mean(player_height)) %>% ggplot(aes(x=season,y= ph,group = 1)) + geom_line()+ geom_point() + scale_x_discrete(breaks=c("1996-97","2001-02","2006-07","2011-12","2016-17","2020-21"))+
+    theme_light()
+
+
+
+
+
+
+
+```
+Here we see that game evolution brought shorter average players by 2cm in last 25 years
+
+### Players weights over years
+
+
+```{r wei,warning=FALSE}
+
+
+df %>% group_by(season) %>% summarise( pw=mean(player_weight)) %>% ggplot(aes(x=season,y= pw,group =1))+
+geom_line() + 
+geom_point() +
+scale_x_discrete(breaks=c("1996-97","2001-02","2006-07","2011-12","2016-17","2020-21")) +
+  theme_light()
+
+
+
+
+
+
+```
+Here we see how average player weight fell over years, since game is more dynamic now and requires more agility and acrobatics, it would be obvious that players want to reduce their weight
+
+### Average ages of players in nba over years
+
+
+
+```{r age,warning=FALSE}
+
+
+df %>% group_by(season) %>% summarise( aa=mean(age)) %>% ggplot(aes(x=season,y= aa,group=1)) +geom_line() + geom_point()+ theme_light() +
+    ggtitle("average age per season")+
+  scale_x_discrete(breaks=c("1996-97","2001-02","2006-07","2011-12","2016-17","2020-21"))
+
+
+
+
+
+```
+
+We can see here the trend that NBA gets rid of older players faster than in previous years
+
+```{r Neradi,warning=FALSE}
+
+
+df  %>% filter(draft_round==1, .preserve= TRUE) %>% group_by(team_abbreviation) %>% distinct(player_name) %>% summarise(n = n()) %>% arrange(desc(n)) %>% head(10) %>% ggplot(aes(x=team_abbreviation,y= n)) + geom_bar(stat='identity')
+
+
+
+
+
+```
+Here we see which teams got most first round picks, the outlier here is the Celtics, since they are one of most consistent teams with almost every season being in the playoffs. (Worse teams get awarded with more favorable draft)
+
+### Number of players originating from which country
+```{r usa,warning=FALSE}
+
+
+df %>% filter(draft_round==1, .preserve = TRUE) %>% group_by(country) %>% summarise(n = n()) %>% arrange(desc(n))  %>% head(10) %>% gt()
+
+
+
+
+```
+Here we have proof that US is the capital of basketball
+
+### Here we see world vs US
+
+```{r uuu,warning=FALSE}
+
+
+
+
+df1<-df %>% filter(draft_round==1, .preserve = TRUE) %>% mutate(usa=case_when(country == "USA" ~ "From USA",
+  country != "USA" ~ "Rest of world",)) %>% group_by(usa) %>% summarise(n = n()) 
+
+ggplot(df1, aes(x = "", y = n, fill = usa)) +
+  geom_col(color = "black") +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = n),
+            position = position_stack(vjust = 0.5))
+
+
+
+
+```
+### Longest name+surname
+
+```{r uuua,warning=FALSE}
+
+
+
+
+df %>% distinct(player_name) %>% filter(nchar(player_name)==max(nchar(df$player_name)))
+
+
+
+```
+Here are 3 longest names+surnames just for sake of it
+
+
+Here we see the fact how much US actualy invests in their athletes, and how basketball is popular in USA, so this is the direct cause of that
+
+## Conclusion
+We can conclude here that there are some interesting statistics in NBA. By looking at this data we can even predict future trends in the league. As game constantly evolves, there are shifts in needs players need to fullfil, so every season we can expect some averages to move. Every year teams try to do most optimal strategies, so no two seasons can be really similar. 
+
